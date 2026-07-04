@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMMEMS · рабочее пространство MEMS Technology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --blue:#3B9EFF; --blue-d:#1E6FD6; --amber:#FFB020; --green:#37D584; --red:#FF6B6B;
+  --ig:#E1477E; --yt:#FF5C5C; --tg:#4DA8FF; --vk:#5B8DEF;
+  --fh:'Unbounded',sans-serif; --fb:'Golos Text',sans-serif; --fm:'JetBrains Mono',monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#080B11; --surface:#101620; --surface2:#161E2A; --raise:#1C2733;
+  --line:rgba(120,165,225,.10); --line2:rgba(120,165,225,.18);
+  --text:#E9EEF6; --muted:#7E8CA3; --dim:#586576; --glow:.14;
+}
+:root[data-theme="light"]{
+  --bg:#F4F7FB; --surface:#FFFFFF; --surface2:#EEF3F9; --raise:#E7EEF6;
+  --line:rgba(20,60,110,.10); --line2:rgba(20,60,110,.18);
+  --text:#0F1B2D; --muted:#5A6B82; --dim:#8A98AC; --glow:.06;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .25s,color .25s}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(900px 500px at 80% -10%, rgba(59,158,255,var(--glow)), transparent 60%),
+   radial-gradient(700px 500px at 4% 2%, rgba(30,111,214,calc(var(--glow) - .04)), transparent 55%)}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 20px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:var(--fb);font-size:14px}
+
+/* topbar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:11px;flex:none;background:linear-gradient(135deg,var(--blue),var(--blue-d));
+  display:grid;place-items:center;font-family:var(--fh);font-weight:800;font-size:18px;color:#04101f;
+  box-shadow:0 0 0 1px rgba(59,158,255,.4),0 8px 22px -6px rgba(59,158,255,.5)}
+.brand h1{font-family:var(--fh);font-weight:800;font-size:18px;letter-spacing:-.01em}
+.brand span{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:1px}
+.top-actions{display:flex;align-items:center;gap:9px}
+.icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);
+  color:var(--text);display:grid;place-items:center;font-size:16px;transition:.16s}
+.icon-btn:hover{background:var(--surface2)}
+.btn{border:1px solid var(--line2);background:var(--surface);color:var(--text);border-radius:10px;
+  padding:9px 15px;font-size:13.5px;font-weight:500;transition:.16s}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue-d));border-color:transparent;color:#04101f;font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:var(--red);border-color:rgba(255,107,107,.3)}
+.btn.sm{padding:6px 11px;font-size:12.5px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:30;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);margin-bottom:30px}
+.nav .wrap{display:flex;gap:5px;overflow-x:auto;padding:9px 20px;scrollbar-width:none}
+.nav .wrap::-webkit-scrollbar{display:none}
+.tab{font-size:13.5px;color:var(--muted);background:none;border:none;white-space:nowrap;
+  padding:8px 15px;border-radius:9px;font-weight:500;transition:.16s;font-family:inherit}
+.tab:hover{color:var(--text);background:var(--surface2)}
+.tab.on{color:var(--text);background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line2)}
+.tab.team-only{display:none}
+body.authed .tab.team-only{display:block}
+
+/* views */
+.view{display:none}
+.view.active{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* generic */
+section{margin-bottom:46px;scroll-margin-top:64px}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.sec-h h2{font-family:var(--fh);font-weight:600;font-size:21px;letter-spacing:-.01em}
+.sec-h .sub{font-size:13px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:3px}
+.card .cap{font-family:var(--fm);font-size:11px;color:var(--dim);margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.chart-box{position:relative;height:230px}
+.muted{color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,320px) 1fr;gap:24px;margin-bottom:16px;align-items:stretch}
+.hero-lead{display:flex;flex-direction:column;justify-content:center}
+.eyebrow{font-family:var(--fm);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);
+  margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.eyebrow::before{content:"";width:20px;height:1px;background:var(--blue)}
+.bignum{font-family:var(--fh);font-weight:800;font-size:clamp(42px,6.5vw,66px);line-height:.95;letter-spacing:-.03em;color:var(--text)}
+.bignum small{font-size:.32em;color:var(--muted);font-family:var(--fb);font-weight:500}
+.hero-lead p{color:var(--muted);font-size:14.5px;margin-top:14px;max-width:34ch}
+.hero-lead b{color:var(--text);font-weight:600}
+.hero-chart{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 18px 6px;position:relative;min-height:280px}
+.hero-chart h3{font-size:13px;color:var(--muted);font-weight:500}
+.hero-chart .cap{font-family:var(--fm);font-size:11px;color:var(--dim);margin-bottom:8px}
+
+/* kpi */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:26px 0 42px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.kpi .k{font-size:12px;color:var(--muted);margin-bottom:10px}
+.kpi .n{font-family:var(--fh);font-weight:600;font-size:27px;letter-spacing:-.02em}
+.kpi .s{font-family:var(--fm);font-size:11px;color:var(--green);margin-top:6px}
+.kpi .s.neu{color:var(--muted)}
+
+/* platform list */
+.prow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border:none}
+.pdot{width:9px;height:9px;border-radius:50%;flex:none}
+.pname{font-weight:500;font-size:14px;width:86px;flex:none}
+.pbar{flex:1;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:4px}
+.pval{font-family:var(--fm);font-size:13px;width:78px;text-align:right;flex:none}
+.ppct{font-family:var(--fm);font-size:11px;color:var(--muted);width:42px;text-align:right;flex:none}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:right;font-weight:500;color:var(--muted);font-size:12px;padding:9px 12px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.tbl th:first-child{text-align:left}
+.tbl td{text-align:right;padding:10px 12px;border-bottom:1px solid var(--line);font-family:var(--fm);font-size:13px}
+.tbl td:first-child{text-align:left;font-family:var(--fb)}
+.tbl tr:hover td{background:color-mix(in srgb,var(--blue) 5%,transparent)}
+.tbl tr.peak td{background:color-mix(in srgb,var(--amber) 8%,transparent)}
+.tbl tr.peak td:first-child{color:var(--amber);font-weight:600}
+.tbl .up{color:var(--green)}
+
+/* viral */
+.viral{background:linear-gradient(135deg,color-mix(in srgb,var(--amber) 12%,transparent),color-mix(in srgb,var(--blue) 5%,transparent));
+  border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);border-radius:16px;padding:20px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:15px}
+.viral .big{font-family:var(--fh);font-weight:800;font-size:36px;color:var(--amber);line-height:1;flex:none}
+.viral .txt h3{font-size:15px;margin-bottom:5px}
+.viral .txt p{font-size:12.5px;color:var(--muted);max-width:62ch}
+
+/* brands */
+.brands{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}
+.bcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;position:relative}
+.bcard.star{border-color:color-mix(in srgb,var(--blue) 40%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--blue) 9%,transparent),var(--surface))}
+.bcard .bn{font-family:var(--fh);font-weight:600;font-size:14px;margin-bottom:2px}
+.bcard .stag{position:absolute;top:13px;right:13px;font-family:var(--fm);font-size:9px;letter-spacing:.08em;color:var(--blue);border:1px solid var(--line2);border-radius:6px;padding:3px 6px}
+.bcard .bval{font-family:var(--fm);font-size:19px;margin-top:12px}
+.bcard .blbl{font-size:11px;color:var(--muted)}
+.bcard .brow{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--fm);font-size:11.5px;color:var(--muted)}
+.bcard .brow b{color:var(--green)}
+.bcard .brow b.dn{color:var(--red)}
+
+/* regions + production */
+.reg{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.rcell{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.rcell .rn{font-size:13px;font-weight:500}
+.rcell .rv{font-family:var(--fm);font-size:15px;color:var(--blue)}
+.prod{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:11px}
+.pcell{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px}
+.pcell .pv{font-family:var(--fh);font-weight:600;font-size:24px;letter-spacing:-.02em}
+.pcell .pl{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* kanban */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.col{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:13px;min-height:120px}
+.col.drag{outline:2px dashed var(--blue);outline-offset:-4px}
+.col-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 3px}
+.col-h .ct{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.col-h .cc{font-family:var(--fm);font-size:11px;color:var(--muted);background:var(--surface2);border-radius:20px;padding:2px 9px}
+.col-dot{width:8px;height:8px;border-radius:50%}
+.tcard{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:12px 13px;margin-bottom:9px;cursor:grab;transition:.14s}
+.tcard:hover{border-color:var(--line2);transform:translateY(-1px)}
+.tcard.dragging{opacity:.4}
+.tcard .tt{font-size:13.5px;font-weight:500;line-height:1.35;margin-bottom:9px}
+.tcard .tmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{font-size:10.5px;font-family:var(--fm);padding:3px 8px;border-radius:20px;background:var(--raise);color:var(--muted)}
+.chip.type{color:var(--blue);background:color-mix(in srgb,var(--blue) 12%,transparent)}
+.chip.pr-Срочно{color:var(--red);background:color-mix(in srgb,var(--red) 14%,transparent)}
+.chip.pr-Высокий{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+.chip.who{background:var(--raise);color:var(--text)}
+.add-task{width:100%;border:1px dashed var(--line2);background:none;color:var(--muted);border-radius:10px;padding:10px;font-size:13px;transition:.14s}
+.add-task:hover{color:var(--text);border-color:var(--blue);background:var(--surface2)}
+
+/* modal */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(4,8,14,.6);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:18px}
+.overlay.on{display:flex;animation:fade .2s}
+.modal{background:var(--surface);border:1px solid var(--line2);border-radius:18px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow:auto}
+.modal h3{font-family:var(--fh);font-weight:600;font-size:17px;margin-bottom:16px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;color:var(--text);outline:none;transition:.14s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}
+.field textarea{resize:vertical;min-height:70px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.modal-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.comments{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.comment{background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.comment .ca{font-size:11.5px;color:var(--blue);font-weight:600;margin-bottom:3px}
+.comment .cb{font-size:13px}
+.comment .cd{font-family:var(--fm);font-size:10px;color:var(--dim);margin-top:4px}
+
+/* admin */
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;align-items:start}
+.chiplist{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chiplist .c{background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.chiplist .c button{background:none;border:none;color:var(--red);font-size:14px;line-height:1}
+.recent-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.recent-row .info{font-family:var(--fm);font-size:12px;color:var(--muted)}
+
+/* media */
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.mtile{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mtile img{width:100%;height:110px;object-fit:cover;display:block;background:var(--surface2)}
+.mtile .mf{padding:9px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.mtile .mn{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uploader{border:2px dashed var(--line2);border-radius:14px;padding:26px;text-align:center;color:var(--muted);margin-bottom:16px;transition:.15s}
+.uploader:hover{border-color:var(--blue);color:var(--text)}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:200;
+  background:var(--raise);border:1px solid var(--line2);border-radius:11px;padding:12px 18px;font-size:13.5px;
+  box-shadow:0 12px 32px -8px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:var(--red);color:var(--red)}
+
+footer{text-align:center;color:var(--dim);font-size:11.5px;padding:20px 0 40px;font-family:var(--fm)}
+
+@media(max-width:880px){
+  .hero{grid-template-columns:1fr}.grid2,.admin-grid{grid-template-columns:1fr}
+  .board{grid-template-columns:1fr}
+}
+@media(max-width:520px){.kpis{grid-template-columns:1fr 1fr}.frow{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="wrap top">
+  <div class="brand">
+    <div class="logo" id="brandLogo">M</div>
+    <div><h1 id="brandName">SMMEMS</h1><span>Рабочее пространство · MEMS Technology</span></div>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="themeBtn" title="Сменить тему">◐</button>
+    <button class="btn" id="authBtn">Войти</button>
+  </div>
+</div>
+
+<nav class="nav"><div class="wrap">
+  <button class="tab on" data-tab="dashboard">Дашборд</button>
+  <button class="tab team-only" data-tab="tasks">Задачи</button>
+  <button class="tab team-only" data-tab="admin">Админка</button>
+  <button class="tab team-only" data-tab="media">Медиа</button>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="view active" id="view-dashboard">
+  <div class="hero">
+    <div class="hero-lead">
+      <div class="eyebrow">Ноябрь 2025 — Июнь 2026</div>
+      <div class="bignum" id="hViews">—</div>
+      <p id="hSub">Загрузка данных…</p>
+    </div>
+    <div class="hero-chart">
+      <h3>Просмотры по месяцам · все площадки</h3>
+      <div class="cap">сумма по всем аккаунтам</div>
+      <div style="height:210px"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <div class="sec-h"><h2>Площадки</h2><span class="sub">распределение просмотров</span></div>
+    <div class="grid2">
+      <div class="card"><h3>Доля по площадкам</h3><div class="cap" id="platCap"></div><div class="chart-box"><canvas id="platChart"></canvas></div></div>
+      <div class="card"><h3>Просмотры по площадкам</h3><div class="cap">за весь период</div><div id="platList" style="margin-top:4px"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Помесячная динамика</h2><span class="sub">сводно</span></div>
+    <div class="card" style="padding:6px 4px"><table class="tbl" id="monthsTbl"></table></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Instagram · @memstechnology</h2><span class="sub">просмотры и охват</span></div>
+    <div class="card"><div class="chart-box" style="height:250px"><canvas id="igChart"></canvas></div></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>YouTube · @memstechnology1</h2><span class="sub">рычаг виральности</span></div>
+    <div id="viralBox"></div>
+    <div class="grid2">
+      <div class="card"><h3>Просмотры канала по месяцам</h3><div class="cap">май показан отдельно</div><div class="chart-box"><canvas id="ytChart"></canvas></div></div>
+      <div class="card"><h3>Топ-ролики</h3><div class="cap">по просмотрам</div><table class="tbl" id="ytTop"></table></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Бренды и блоги</h2><span class="sub">Instagram · май → июнь</span></div>
+    <div class="brands" id="brandGrid"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Региональные каналы</h2><span class="sub">Telegram · 30.06</span><span class="sub" id="regSum"></span></div>
+    <div class="reg" id="regGrid"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Производство</h2><span class="sub">команда · май</span></div>
+    <div class="prod" id="prodGrid"></div>
+  </section>
+</div>
+
+<!-- ===== TASKS ===== -->
+<div class="view" id="view-tasks">
+  <div class="sec-h"><h2>Доска задач</h2><span class="sub">команда MEMS · перетаскивай карточки между колонками</span></div>
+  <div class="board" id="board"></div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div class="view" id="view-admin">
+  <div class="sec-h"><h2>Админка</h2><span class="sub">ввод данных · доступ только команде</span></div>
+  <div class="admin-grid">
+    <div class="card">
+      <h3>Добавить данные за месяц</h3><div class="cap">цифры лягут в дашборд сразу после сохранения</div>
+      <div class="frow">
+        <div class="field"><label>Месяц</label><input id="a_period" type="month" value="2026-07"></div>
+        <div class="field"><label>Аккаунт</label><select id="a_account"></select></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Площадка</label><select id="a_platform">
+          <option>Instagram</option><option>YouTube</option><option>Telegram</option><option>VK</option></select></div>
+        <div class="field"><label>Просмотры</label><input id="a_views" type="number" placeholder="0"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Прирост подписчиков</label><input id="a_subs" type="number" placeholder="0"></div>
+        <div class="field"><label>Подписчиков всего</label><input id="a_total" type="number" placeholder="0"></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>Публикации</label><input id="a_posts" type="number" placeholder="0"></div>
+        <div class="field"><label>Охват</label><input id="a_reach" type="number" placeholder="0"></div>
+      </div>
+      <div class="modal-actions"><button class="btn primary" id="saveEntry">Сохранить</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Аккаунты и бренды</h3><div class="cap">добавляй новые без кода</div>
+      <div class="frow">
+        <div class="field"><label>Название</label><input id="acc_name" placeholder="Напр. Keephone"></div>
+        <div class="field"><label>Группа</label><select id="acc_group">
+          <option value="Основной">Основной</option><option value="Бренд">Бренд</option>
+          <option value="Личный">Личный</option><option value="Регион">Регион</option></select></div>
+      </div>
+      <div class="modal-actions"><button class="btn sm" id="addAcc">Добавить аккаунт</button></div>
+      <div class="chiplist" id="accList"></div>
+
+      <h3 style="margin-top:22px">Команда</h3><div class="cap">кого можно назначать на задачи</div>
+      <div class="frow">
+        <div class="field"><label>Имя</label><input id="tm_name" placeholder="Напр. Максим"></div>
+        <div class="field"><label>Роль</label><input id="tm_role" placeholder="дизайнер / монтажёр"></div>
+      </div>
+      <div class="modal-actions"><button class="btn sm" id="addTm">Добавить в команду</button></div>
+      <div class="chiplist" id="tmList"></div>
+
+      <h3 style="margin-top:22px">Бренд сайта</h3><div class="cap">название и акцентный цвет</div>
+      <div class="frow">
+        <div class="field"><label>Название</label><input id="set_name" value="SMMEMS"></div>
+        <div class="field"><label>Акцент</label><input id="set_accent" type="color" value="#3B9EFF"></div>
+      </div>
+      <div class="modal-actions"><button class="btn sm" id="saveSettings">Применить</button></div>
+    </div>
+  </div>
+
+  <section style="margin-top:30px">
+    <div class="sec-h"><h2>Последние записи</h2><span class="sub">можно удалить</span></div>
+    <div class="card" id="recentEntries"></div>
+  </section>
+</div>
+
+<!-- ===== MEDIA ===== -->
+<div class="view" id="view-media">
+  <div class="sec-h"><h2>Медиатека</h2><span class="sub">баннеры и картинки</span></div>
+  <label class="uploader" id="uploader">
+    Нажми чтобы загрузить картинку или баннер<br><span style="font-size:12px">PNG, JPG, WEBP · до 5 МБ</span>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+  </label>
+  <div class="media-grid" id="mediaGrid"></div>
+</div>
+
+<footer id="footer">SMMEMS · данные из ваших выгрузок</footer>
+</div>
+
+<!-- login modal -->
+<div class="overlay" id="loginModal">
+  <div class="modal" style="max-width:380px">
+    <h3>Вход для команды</h3>
+    <div class="field"><label>Почта</label><input id="li_email" type="email" placeholder="you@mems.ru"></div>
+    <div class="field"><label>Пароль</label><input id="li_pass" type="password" placeholder="••••••"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeLogin()">Отмена</button>
+      <button class="btn primary" id="doLogin">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- task modal -->
+<div class="overlay" id="taskModal">
+  <div class="modal">
+    <h3 id="tmTitle">Новая задача</h3>
+    <div class="field"><label>Название</label><input id="t_title" placeholder="Что нужно сделать"></div>
+    <div class="field"><label>Описание</label><textarea id="t_desc" placeholder="Детали, ссылки, правки"></textarea></div>
+    <div class="frow">
+      <div class="field"><label>Ответственный</label><select id="t_assignee"></select></div>
+      <div class="field"><label>Тип</label><select id="t_type">
+        <option>Обложка Reels</option><option>Городской баннер</option><option>Монтаж</option>
+        <option>Пост</option><option>Дизайн</option><option>Фото</option><option>Другое</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Приоритет</label><select id="t_priority">
+        <option>Низкий</option><option selected>Средний</option><option>Высокий</option><option>Срочно</option></select></div>
+      <div class="field"><label>Срок</label><input id="t_due" type="date"></div>
+    </div>
+    <div class="field"><label>Статус</label><select id="t_status">
+      <option value="todo">К выполнению</option><option value="doing">Делаем</option><option value="done">Готово</option></select></div>
+    <div class="comments" id="tComments" style="display:none"></div>
+    <div class="field" id="tCommentField" style="display:none;margin-top:12px">
+      <label>Комментарий</label>
+      <div style="display:flex;gap:8px"><input id="t_comment" placeholder="Написать команде…">
+        <button class="btn sm" id="addComment">Отпр.</button></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="delTask" style="display:none;margin-right:auto">Удалить</button>
+      <button class="btn" onclick="closeTask()">Закрыть</button>
+      <button class="btn primary" id="saveTask">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const SUPABASE_URL = "https://znnedhsnjkswpsfnwzgj.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubmVkaHNuamtzd3BzZm53emdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMDYxODUsImV4cCI6MjA5ODY4MjE4NX0.nOvuPmKGhp-_XculRtuEXpevkwQPmscFYGTQEAHSd4Q";
+
+let sb=null;
+try{ sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); }catch(e){ console.warn(e); }
+
+/* ================= HELPERS ================= */
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString('ru-RU');
+const fmtK=n=>n>=1e6?(n/1e6).toFixed(2).replace('.',',')+' млн':n>=1e3?Math.round(n/1e3)+'K':String(n);
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let toastT;
+function toast(msg,err){const t=$('toast');t.textContent=msg;t.className='toast on'+(err?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',2600);}
+let session=null;
+const charts={};
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});}
+
+/* ================= THEME ================= */
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem('smmems_theme',t)}catch(e){}
+  if(dashLoaded) renderDashboard();}
+$('themeBtn').onclick=()=>{const cur=document.documentElement.getAttribute('data-theme');setTheme(cur==='dark'?'light':'dark');};
+(function(){let t='dark';try{t=localStorage.getItem('smmems_theme')||'dark'}catch(e){}document.documentElement.setAttribute('data-theme',t);})();
+
+/* ================= TABS ================= */
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+function switchTab(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('on'));
+  $('view-'+name).classList.add('active');
+  document.querySelector('[data-tab="'+name+'"]').classList.add('on');
+  if(name==='tasks') loadTasks();
+  if(name==='admin') loadAdmin();
+  if(name==='media') loadMedia();
+}
+
+/* ================= AUTH ================= */
+$('authBtn').onclick=()=>{ if(session) doLogout(); else openLogin(); };
+function openLogin(){$('loginModal').classList.add('on');}
+function closeLogin(){$('loginModal').classList.remove('on');}
+$('doLogin').onclick=async()=>{
+  if(!sb) return toast('Нет соединения с базой',1);
+  const email=$('li_email').value.trim(), pass=$('li_pass').value;
+  if(!email||!pass) return toast('Введите почту и пароль',1);
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error) return toast('Не удалось войти: '+error.message,1);
+  closeLogin(); toast('Вы вошли');
+};
+async function doLogout(){ await sb.auth.signOut(); toast('Вы вышли'); }
+function applyAuthUI(){
+  document.body.classList.toggle('authed', !!session);
+  $('authBtn').textContent = session ? 'Выйти' : 'Войти';
+  if(!session){ // if on a team tab, bounce to dashboard
+    const active=document.querySelector('.view.active');
+    if(active && active.id!=='view-dashboard') switchTab('dashboard');
+  }
+}
+if(sb){
+  sb.auth.getSession().then(({data})=>{session=data.session;applyAuthUI();});
+  sb.auth.onAuthStateChange((_e,s)=>{session=s;applyAuthUI();});
+}
+
+/* ================= DATA LOADERS ================= */
+async function sbSelect(table,order){
+  if(!sb) return [];
+  let q=sb.from(table).select('*');
+  if(order) q=q.order(order.col,{ascending:order.asc!==false});
+  const {data,error}=await q;
+  if(error){console.warn(table,error.message);return [];}
+  return data||[];
+}
+
+/* ================= DASHBOARD ================= */
+let DATA={analytics:[],production:[],videos:[],accounts:[]};
+let dashLoaded=false;
+async function loadDashboard(){
+  const [analytics,production,videos,accounts]=await Promise.all([
+    sbSelect('analytics'),sbSelect('production'),sbSelect('videos',{col:'views',asc:false}),sbSelect('accounts')
+  ]);
+  DATA={analytics,production,videos,accounts};
+  dashLoaded=true;
+  if(!analytics.length){
+    $('hViews').textContent='—';
+    $('hSub').innerHTML='Данные ещё не загружены. Войдите и добавьте цифры в разделе <b>Админка</b>.';
+  }
+  renderDashboard();
+}
+function monthOrder(p){return p;} // period 'YYYY-MM' sorts lexically
+const MONTHS_RU={ '01':'Янв','02':'Фев','03':'Мар','04':'Апр','05':'Май','06':'Июн','07':'Июл','08':'Авг','09':'Сен','10':'Окт','11':'Ноя','12':'Дек'};
+function mlabel(p){const [y,m]=p.split('-');return (MONTHS_RU[m]||m)+" "+y.slice(2);}
+
+function renderDashboard(){
+  destroyCharts();
+  const A=DATA.analytics;
+  if(!A.length){renderEmptyBlocks();return;}
+  Chart.defaults.font.family="'JetBrains Mono',monospace";
+  Chart.defaults.font.size=11; Chart.defaults.color=cssv('--muted');
+
+  // monthly totals across ALL rows
+  const byMonth={};
+  A.forEach(r=>{const p=r.period;if(!p)return;byMonth[p]=byMonth[p]||{views:0,subs:0,posts:0};
+    byMonth[p].views+=+r.views||0;byMonth[p].subs+=+r.subs_gain||0;byMonth[p].posts+=+r.posts||0;});
+  const periods=Object.keys(byMonth).sort();
+  const totViews=A.reduce((s,r)=>s+(+r.views||0),0);
+  const totSubs=A.reduce((s,r)=>s+(+r.subs_gain||0),0);
+  const totPosts=A.reduce((s,r)=>s+(+r.posts||0),0);
+  const peak=periods.reduce((mx,p)=>byMonth[p].views>byMonth[mx].views?p:mx,periods[0]);
+
+  $('hViews').innerHTML=(totViews/1e6).toFixed(2).replace('.',',')+' <small>млн просмотров</small>';
+  $('hSub').innerHTML='За период — <b>+'+fmt(totSubs)+'</b> подписчиков и <b>'+fmt(totPosts)+'</b> публикаций по всем аккаунтам.';
+
+  // trend
+  charts.trend=new Chart($('trendChart'),{type:'line',
+   data:{labels:periods.map(mlabel),datasets:[{data:periods.map(p=>byMonth[p].views),
+     borderColor:cssv('--blue'),borderWidth:2.5,tension:.35,fill:true,
+     pointRadius:periods.map(p=>p===peak?5:3),
+     pointBackgroundColor:periods.map(p=>p===peak?cssv('--amber'):cssv('--blue')),pointBorderColor:'transparent',
+     backgroundColor:c=>{const{ctx,chartArea:a}=c.chart;if(!a)return;const g=ctx.createLinearGradient(0,a.top,0,a.bottom);
+       g.addColorStop(0,'rgba(59,158,255,.28)');g.addColorStop(1,'rgba(59,158,255,0)');return g;}}]},
+   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+     tooltip:{callbacks:{label:c=>fmt(c.parsed.y)+' просмотров'}}},
+     scales:{x:{grid:{display:false},border:{display:false}},
+       y:{grid:{color:cssv('--line')},border:{display:false},ticks:{callback:v=>fmtK(v)}}}}});
+
+  // kpis
+  $('kpis').innerHTML=`
+    <div class="kpi"><div class="k">Просмотры, всего</div><div class="n">${(totViews/1e6).toFixed(2).replace('.',',')} <span style="font-size:.55em;color:var(--muted)">млн</span></div><div class="s neu">по всем строкам</div></div>
+    <div class="kpi"><div class="k">Прирост подписчиков</div><div class="n">+${fmt(totSubs)}</div><div class="s">за период</div></div>
+    <div class="kpi"><div class="k">Публикаций</div><div class="n">${fmt(totPosts)}</div><div class="s neu">видео + посты + сторис</div></div>
+    <div class="kpi"><div class="k">Пиковый месяц</div><div class="n" style="color:var(--amber)">${mlabel(peak).split(' ')[0]}</div><div class="s neu">${fmtK(byMonth[peak].views)} просмотров</div></div>`;
+
+  // platforms
+  const plat={}; A.forEach(r=>{const k=r.platform;if(!k)return;plat[k]=(plat[k]||0)+(+r.views||0);});
+  const pColors={Instagram:cssv('--ig'),YouTube:cssv('--yt'),Telegram:cssv('--tg'),VK:cssv('--vk')};
+  const pOrder=Object.keys(plat).sort((a,b)=>plat[b]-plat[a]);
+  const pTot=pOrder.reduce((s,k)=>s+plat[k],0), pMax=Math.max(...pOrder.map(k=>plat[k]));
+  $('platCap').textContent='всего '+fmt(pTot)+' просмотров';
+  charts.plat=new Chart($('platChart'),{type:'doughnut',
+   data:{labels:pOrder,datasets:[{data:pOrder.map(k=>plat[k]),backgroundColor:pOrder.map(k=>pColors[k]||cssv('--blue')),
+     borderColor:cssv('--bg'),borderWidth:3,hoverOffset:6}]},
+   options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+     plugins:{legend:{position:'bottom',labels:{padding:13,usePointStyle:true,pointStyle:'circle',font:{size:12}}},
+       tooltip:{callbacks:{label:c=>fmt(c.parsed)+' ('+Math.round(c.parsed/pTot*100)+'%)'}}}}});
+  $('platList').innerHTML=pOrder.map(k=>`<div class="prow">
+     <span class="pdot" style="background:${pColors[k]||cssv('--blue')}"></span>
+     <span class="pname">${k}</span>
+     <span class="pbar"><i style="width:${plat[k]/pMax*100}%;background:${pColors[k]||cssv('--blue')}"></i></span>
+     <span class="pval">${fmt(plat[k])}</span><span class="ppct">${Math.round(plat[k]/pTot*100)}%</span></div>`).join('');
+
+  // months table
+  $('monthsTbl').innerHTML=`<thead><tr><th>Месяц</th><th>Просмотры</th><th>Подписчики</th><th>Публикации</th></tr></thead>
+    <tbody>${periods.map(p=>`<tr class="${p===peak?'peak':''}"><td>${mlabel(p)}</td>
+      <td>${fmt(byMonth[p].views)}</td><td class="up">+${fmt(byMonth[p].subs)}</td><td>${byMonth[p].posts}</td></tr>`).join('')}
+      <tr style="font-weight:600"><td>Итого</td><td>${fmt(totViews)}</td><td class="up">+${fmt(totSubs)}</td><td>${fmt(totPosts)}</td></tr></tbody>`;
+
+  // instagram main
+  const igMain=periods.map(p=>{const rows=A.filter(r=>r.period===p&&r.platform==='Instagram'&&r.group_name==='Основной');
+    return {m:mlabel(p),views:rows.reduce((s,r)=>s+(+r.views||0),0),reach:rows.reduce((s,r)=>s+(+r.reach||0),0)};}).filter(x=>x.views);
+  charts.ig=new Chart($('igChart'),{type:'bar',
+   data:{labels:igMain.map(x=>x.m),datasets:[
+     {label:'Просмотры',data:igMain.map(x=>x.views),backgroundColor:cssv('--blue'),borderRadius:5,barPercentage:.72},
+     {label:'Охват',data:igMain.map(x=>x.reach),backgroundColor:cssv('--surface2'),borderRadius:5,barPercentage:.72}]},
+   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,pointStyle:'rectRounded',padding:12}},
+     tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)}}},
+     scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:cssv('--line')},border:{display:false},ticks:{callback:v=>fmtK(v)}}}}});
+
+  // youtube
+  const ytMain=periods.map(p=>{const rows=A.filter(r=>r.period===p&&r.platform==='YouTube'&&r.group_name==='Основной');
+    return {p,m:mlabel(p),views:rows.reduce((s,r)=>s+(+r.views||0),0)};}).filter(x=>x.views);
+  const topVid=DATA.videos[0];
+  const ytPeak=ytMain.reduce((mx,x)=>x.views>((mx&&mx.views)||0)?x:mx,null);
+  const viralViews=topVid?topVid.views:0;
+  if(ytPeak&&topVid&&viralViews>ytPeak.views*0.5){
+    $('viralBox').innerHTML=`<div class="viral"><div class="big">${(viralViews/1e6).toFixed(2).replace('.',',')}<span style="font-size:.5em"> млн</span></div>
+      <div class="txt"><h3>«${topVid.title}» — вирусный ролик</h3>
+      <p>Один ролик собрал ${fmt(viralViews)} просмотров и обеспечил основную часть пика. Даже без него месяц остаётся сильным по органике. Это ориентир для повторяемого формата.</p></div></div>`;
+  } else $('viralBox').innerHTML='';
+  charts.yt=new Chart($('ytChart'),{type:'bar',
+   data:{labels:ytMain.map(x=>x.m),datasets:[
+     {label:'Органика',stack:'s',data:ytMain.map(x=>x===ytPeak&&viralViews<x.views?x.views-viralViews:x.views),backgroundColor:cssv('--yt'),borderRadius:5,barPercentage:.72},
+     {label:'Вирусный ролик',stack:'s',data:ytMain.map(x=>x===ytPeak&&viralViews<x.views?viralViews:0),backgroundColor:cssv('--amber'),borderRadius:5,barPercentage:.72}]},
+   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,pointStyle:'rectRounded',padding:12}},
+     tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)}}},
+     scales:{x:{stacked:true,grid:{display:false},border:{display:false}},y:{stacked:true,grid:{color:cssv('--line')},border:{display:false},ticks:{callback:v=>fmtK(v)}}}}});
+  $('ytTop').innerHTML='<tbody>'+DATA.videos.slice(0,6).map((v,i)=>`<tr>
+     <td style="max-width:230px;white-space:normal;line-height:1.35;font-size:12.5px">${v.title}</td>
+     <td style="${i===0?'color:var(--amber);font-weight:700':''}">${fmt(v.views)}</td></tr>`).join('')+'</tbody>';
+
+  // brands
+  const brandAccounts=[...new Set(A.filter(r=>r.group_name==='Бренд'||r.group_name==='Личный').map(r=>r.account))];
+  const bgrid=brandAccounts.map(acc=>{
+    const rows=A.filter(r=>r.account===acc&&r.platform==='Instagram');
+    const jun=rows.filter(r=>r.period==='2026-06'), may=rows.filter(r=>r.period==='2026-05');
+    const junV=jun.reduce((s,r)=>s+(+r.views||0),0), mayV=may.reduce((s,r)=>s+(+r.views||0),0);
+    const subs=Math.max(...rows.map(r=>+r.subs_total||0),0);
+    const gain=jun.reduce((s,r)=>s+(+r.subs_gain||0),0);
+    const delta=mayV?Math.round((junV-mayV)/mayV*100):0;
+    return {acc,junV,subs,gain,delta};
+  }).sort((a,b)=>b.junV-a.junV);
+  const star=bgrid.length?bgrid[0].acc:null;
+  $('brandGrid').innerHTML=bgrid.map(b=>`<div class="bcard ${b.acc===star?'star':''}">
+     ${b.acc===star?'<span class="stag">ЛИДЕР</span>':''}
+     <div class="bn">${b.acc}</div>
+     <div class="blbl">Просмотры (июнь)</div><div class="bval">${fmt(b.junV)}</div>
+     <div class="brow"><span>${fmt(b.subs)} подпис.</span>${b.gain>0?`<b>+${b.gain}</b>`:(b.delta<0?`<b class="dn">${b.delta}%</b>`:'<span>—</span>')}</div></div>`).join('')
+     || '<div class="empty">Нет данных по брендам</div>';
+
+  // regions
+  const regRows=A.filter(r=>r.group_name==='Регион');
+  const regMap={}; regRows.forEach(r=>{regMap[r.account]=Math.max(regMap[r.account]||0,+r.subs_total||0);});
+  const regArr=Object.entries(regMap).sort((a,b)=>b[1]-a[1]);
+  $('regSum').textContent=regArr.length?('всего '+fmt(regArr.reduce((s,x)=>s+x[1],0))+' подписчиков'):'';
+  $('regGrid').innerHTML=regArr.map(([n,s])=>`<div class="rcell"><span class="rn">${n.replace('MEMS ','')}</span><span class="rv">${s}</span></div>`).join('')
+     || '<div class="empty">Нет региональных данных</div>';
+
+  // production
+  const prod=DATA.production.slice().sort((a,b)=>(+b.value||0)-(+a.value||0));
+  $('prodGrid').innerHTML=prod.map(p=>`<div class="pcell"><div class="pv">${fmt(p.value)}</div><div class="pl">${p.metric}</div></div>`).join('')
+     || '<div class="empty">Нет данных производства</div>';
+}
+function renderEmptyBlocks(){
+  ['kpis','platList','brandGrid','regGrid','prodGrid'].forEach(id=>$(id).innerHTML='<div class="empty">Нет данных</div>');
+  $('monthsTbl').innerHTML=''; $('ytTop').innerHTML=''; $('viralBox').innerHTML='';
+}
+
+/* ================= TASKS ================= */
+const COLS=[{k:'todo',t:'К выполнению',c:'--muted'},{k:'doing',t:'Делаем',c:'--blue'},{k:'done',t:'Готово',c:'--green'}];
+let TASKS=[], TEAM=[], editingTask=null;
+async function loadTasks(){
+  if(!session){switchTab('dashboard');return;}
+  [TASKS,TEAM]=await Promise.all([sbSelect('tasks',{col:'created_at',asc:false}),sbSelect('team_members')]);
+  renderBoard();
+}
+function renderBoard(){
+  $('board').innerHTML=COLS.map(col=>{
+    const items=TASKS.filter(t=>(t.status||'todo')===col.k);
+    return `<div class="col" data-col="${col.k}">
+      <div class="col-h"><span class="ct"><span class="col-dot" style="background:var(${col.c})"></span>${col.t}</span>
+        <span class="cc">${items.length}</span></div>
+      <div class="col-body">${items.map(taskCardHTML).join('')}</div>
+      <button class="add-task" data-add="${col.k}">+ Задача</button></div>`;
+  }).join('');
+  // drag events
+  document.querySelectorAll('.tcard').forEach(el=>{
+    el.addEventListener('dragstart',e=>{el.classList.add('dragging');e.dataTransfer.setData('id',el.dataset.id);});
+    el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+    el.addEventListener('click',()=>openTask(TASKS.find(t=>t.id==el.dataset.id)));
+  });
+  document.querySelectorAll('.col').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drag');});
+    col.addEventListener('dragleave',()=>col.classList.remove('drag'));
+    col.addEventListener('drop',async e=>{e.preventDefault();col.classList.remove('drag');
+      const id=e.dataTransfer.getData('id'), status=col.dataset.col;
+      await sb.from('tasks').update({status}).eq('id',id);
+      const t=TASKS.find(x=>x.id==id); if(t)t.status=status; renderBoard();});
+  });
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openTask(null,b.dataset.add));
+}
+function taskCardHTML(t){
+  const who=t.assignee?`<span class="chip who">${t.assignee}</span>`:'';
+  const due=t.due_date?`<span class="chip">до ${new Date(t.due_date).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</span>`:'';
+  return `<div class="tcard" draggable="true" data-id="${t.id}">
+    <div class="tt">${t.title}</div>
+    <div class="tmeta"><span class="chip type">${t.task_type||'Задача'}</span>
+      ${t.priority&&t.priority!=='Средний'&&t.priority!=='Низкий'?`<span class="chip pr-${t.priority}">${t.priority}</span>`:''}
+      ${who}${due}</div></div>`;
+}
+function fillTeamSelect(sel,val){ sel.innerHTML='<option value="">— не назначен —</option>'+
+  TEAM.map(m=>`<option ${val===m.name?'selected':''}>${m.name}</option>`).join(''); }
+function openTask(t,presetStatus){
+  editingTask=t||null;
+  $('tmTitle').textContent=t?'Задача':'Новая задача';
+  fillTeamSelect($('t_assignee'), t?t.assignee:'');
+  $('t_title').value=t?t.title:''; $('t_desc').value=t?(t.description||''):'';
+  $('t_type').value=t?(t.task_type||'Другое'):'Обложка Reels';
+  $('t_priority').value=t?(t.priority||'Средний'):'Средний';
+  $('t_due').value=t?(t.due_date||''):'';
+  $('t_status').value=t?(t.status||'todo'):(presetStatus||'todo');
+  $('delTask').style.display=t?'inline-block':'none';
+  const showC=!!t; $('tComments').style.display=showC?'block':'none'; $('tCommentField').style.display=showC?'block':'none';
+  if(t) loadComments(t.id); 
+  $('taskModal').classList.add('on');
+}
+function closeTask(){$('taskModal').classList.remove('on');editingTask=null;}
+$('saveTask').onclick=async()=>{
+  const payload={title:$('t_title').value.trim(),description:$('t_desc').value.trim(),
+    assignee:$('t_assignee').value,task_type:$('t_type').value,priority:$('t_priority').value,
+    due_date:$('t_due').value||null,status:$('t_status').value};
+  if(!payload.title) return toast('Впишите название',1);
+  let error;
+  if(editingTask){({error}=await sb.from('tasks').update(payload).eq('id',editingTask.id));}
+  else {({error}=await sb.from('tasks').insert(payload));}
+  if(error) return toast('Ошибка: '+error.message,1);
+  closeTask(); toast('Сохранено'); loadTasks();
+};
+$('delTask').onclick=async()=>{ if(!editingTask)return;
+  const {error}=await sb.from('tasks').delete().eq('id',editingTask.id);
+  if(error) return toast('Ошибка: '+error.message,1);
+  closeTask(); toast('Удалено'); loadTasks();
+};
+async function loadComments(taskId){
+  const {data}=await sb.from('task_comments').select('*').eq('task_id',taskId).order('created_at',{ascending:true});
+  const box=$('tComments');
+  box.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Комментарии</div>'+
+    ((data&&data.length)?data.map(c=>`<div class="comment"><div class="ca">${c.author||'—'}</div>
+      <div class="cb">${c.body}</div><div class="cd">${new Date(c.created_at).toLocaleString('ru-RU')}</div></div>`).join('')
+      :'<div style="font-size:12.5px;color:var(--dim)">Пока нет комментариев</div>');
+}
+$('addComment').onclick=async()=>{ if(!editingTask)return;
+  const body=$('t_comment').value.trim(); if(!body)return;
+  const author=(session&&session.user&&session.user.email)?session.user.email.split('@')[0]:'команда';
+  const {error}=await sb.from('task_comments').insert({task_id:editingTask.id,author,body});
+  if(error) return toast('Ошибка: '+error.message,1);
+  $('t_comment').value=''; loadComments(editingTask.id);
+};
+
+/* ================= ADMIN ================= */
+async function loadAdmin(){
+  if(!session){switchTab('dashboard');return;}
+  const [accounts,team]=await Promise.all([sbSelect('accounts'),sbSelect('team_members')]);
+  DATA.accounts=accounts; TEAM=team;
+  $('a_account').innerHTML=accounts.map(a=>`<option value="${a.name}" data-group="${a.group_name}">${a.name}</option>`).join('');
+  $('accList').innerHTML=accounts.map(a=>`<span class="c">${a.name}<span style="color:var(--dim)">·${a.group_name}</span><button data-del-acc="${a.id}">×</button></span>`).join('');
+  $('tmList').innerHTML=team.map(m=>`<span class="c">${m.name}${m.role?'<span style="color:var(--dim)">·'+m.role+'</span>':''}<button data-del-tm="${m.id}">×</button></span>`).join('');
+  document.querySelectorAll('[data-del-acc]').forEach(b=>b.onclick=async()=>{await sb.from('accounts').delete().eq('id',b.dataset.delAcc);loadAdmin();});
+  document.querySelectorAll('[data-del-tm]').forEach(b=>b.onclick=async()=>{await sb.from('team_members').delete().eq('id',b.dataset.delTm);loadAdmin();});
+  loadRecent();
+}
+$('saveEntry').onclick=async()=>{
+  const period=$('a_period').value; if(!period) return toast('Выберите месяц',1);
+  const accSel=$('a_account'); const group=accSel.selectedOptions[0]?accSel.selectedOptions[0].dataset.group:'Основной';
+  const row={period,month_label:period,account:accSel.value||'Mems Technology',group_name:group||'Основной',
+    platform:$('a_platform').value,
+    views:+$('a_views').value||0,subs_gain:+$('a_subs').value||0,subs_total:+$('a_total').value||0,
+    posts:+$('a_posts').value||0,reach:+$('a_reach').value||0};
+  const {error}=await sb.from('analytics').insert(row);
+  if(error) return toast('Ошибка: '+error.message,1);
+  toast('Данные сохранены'); ['a_views','a_subs','a_total','a_posts','a_reach'].forEach(id=>$(id).value='');
+  loadRecent(); loadDashboard();
+};
+async function loadRecent(){
+  const {data}=await sb.from('analytics').select('*').order('created_at',{ascending:false}).limit(12);
+  $('recentEntries').innerHTML=(data&&data.length)?data.map(r=>`<div class="recent-row">
+     <span>${r.account} · ${r.platform} <span class="info">${mlabel(r.period)}</span></span>
+     <span class="info">${fmt(r.views)} просм.</span>
+     <button class="btn sm danger" data-del-an="${r.id}">Удалить</button></div>`).join('')
+     :'<div class="empty">Пока нет записей</div>';
+  document.querySelectorAll('[data-del-an]').forEach(b=>b.onclick=async()=>{
+    await sb.from('analytics').delete().eq('id',b.dataset.delAn);loadRecent();loadDashboard();toast('Запись удалена');});
+}
+$('addAcc').onclick=async()=>{const name=$('acc_name').value.trim();if(!name)return toast('Впишите название',1);
+  const {error}=await sb.from('accounts').insert({name,group_name:$('acc_group').value});
+  if(error)return toast('Ошибка: '+error.message,1); $('acc_name').value='';loadAdmin();toast('Аккаунт добавлен');};
+$('addTm').onclick=async()=>{const name=$('tm_name').value.trim();if(!name)return toast('Впишите имя',1);
+  const {error}=await sb.from('team_members').insert({name,role:$('tm_role').value.trim()});
+  if(error)return toast('Ошибка: '+error.message,1); $('tm_name').value='';$('tm_role').value='';loadAdmin();toast('Добавлено');};
+$('saveSettings').onclick=async()=>{
+  const brand_name=$('set_name').value.trim()||'SMMEMS', accent=$('set_accent').value;
+  const {error}=await sb.from('settings').upsert({id:1,brand_name,accent});
+  if(error)return toast('Ошибка: '+error.message,1);
+  applySettings({brand_name,accent}); toast('Применено');
+};
+function applySettings(s){ if(!s)return;
+  if(s.brand_name){$('brandName').textContent=s.brand_name;$('brandLogo').textContent=s.brand_name[0]||'M';}
+  if(s.accent){document.documentElement.style.setProperty('--blue',s.accent);}
+}
+
+/* ================= MEDIA ================= */
+$('uploader').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  if(file.size>5*1024*1024) return toast('Файл больше 5 МБ',1);
+  const path=Date.now()+'_'+file.name.replace(/[^\w.\-]/g,'_');
+  const {error}=await sb.storage.from('media').upload(path,file);
+  if(error) return toast('Ошибка загрузки: '+error.message,1);
+  toast('Загружено'); loadMedia();
+};
+async function loadMedia(){
+  if(!session){switchTab('dashboard');return;}
+  const {data,error}=await sb.storage.from('media').list('',{limit:100,sortBy:{column:'created_at',order:'desc'}});
+  if(error){$('mediaGrid').innerHTML='<div class="empty">Не удалось загрузить медиатеку</div>';return;}
+  const files=(data||[]).filter(f=>f.name!=='.emptyFolderPlaceholder');
+  $('mediaGrid').innerHTML=files.length?files.map(f=>{
+    const url=sb.storage.from('media').getPublicUrl(f.name).data.publicUrl;
+    return `<div class="mtile"><img src="${url}" loading="lazy" alt="">
+      <div class="mf"><span class="mn" title="${f.name}">${f.name.split('_').slice(1).join('_')||f.name}</span>
+      <button class="btn sm danger" data-del-media="${f.name}">×</button></div></div>`;
+  }).join(''):'<div class="empty">Пока пусто. Загрузите первый баннер выше.</div>';
+  document.querySelectorAll('[data-del-media]').forEach(b=>b.onclick=async()=>{
+    await sb.storage.from('media').remove([b.dataset.delMedia]);loadMedia();toast('Удалено');});
+}
+
+/* ================= INIT ================= */
+(async function init(){
+  if(!sb){ $('hViews').textContent='—'; $('hSub').innerHTML='Не удалось подключиться к базе. Проверьте ключи Supabase в коде.'; return; }
+  const settings=await sbSelect('settings'); if(settings&&settings[0]) applySettings(settings[0]);
+  loadDashboard();
+})();
+</script>
+</body>
+</html>
